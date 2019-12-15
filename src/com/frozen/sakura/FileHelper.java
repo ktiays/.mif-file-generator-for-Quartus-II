@@ -8,18 +8,29 @@ public class FileHelper {
     private static class SheetMusic {
         public String note;
         public int count;
+        // 模仿古筝摇指
+        public boolean tremolo = false;
 
         public SheetMusic (String note, int count) {
             super();
             this.note = note;
             this.count = count;
         }
+
+        public SheetMusic (String note, int count, boolean tremolo) {
+            super();
+            this.note = note;
+            this.count = count;
+            this.tremolo = tremolo;
+        }
     }
 
     // 计数器
     private int woc = 0;
     // 调性转换
-    private final int offset = 3;
+    private final int offset = 0;
+    // 以几分音符为一个音符单位
+    private final int unit = 16;
     // 储存乐谱结果
     private ArrayList<SheetMusic> sheetMusics = new ArrayList<>();
 
@@ -40,11 +51,23 @@ public class FileHelper {
             for (SheetMusic item :
                     sheetMusics) {
                 for (int i = 0; i < item.count; i++, woc++) {
-                    data.append("    ")
-                            .append(woc)
-                            .append(": ")
-                            .append(item.note)
-                            .append(";\n");
+                    if (!item.tremolo)
+                        data.append("    ")
+                                .append(woc)
+                                .append(": ")
+                                .append(item.note)
+                                .append(";\n");
+                    else {
+                        data.append("    ")
+                                .append(woc)
+                                .append(": ");
+                        // 模仿摇指
+                        if ((i & 1) == 0)
+                            data.append(item.note);
+                        else
+                            data.append("0");
+                        data.append(";\n");
+                    }
                     if (Integer.parseInt(item.note) > width)
                         width = Integer.parseInt(item.note);
                 }
@@ -81,28 +104,33 @@ public class FileHelper {
     }
 
     private void transformData(String data) {
+        SheetMusic sheetMusic;
+        String temp = data.replace("/", "");
         // 音符格式错误
-        if (data.contains(".") && data.contains("-")) {
-            SheetMusic sheetMusic = new SheetMusic("error", 1);
-            sheetMusics.add(sheetMusic);
+        if (temp.contains(".") && temp.contains("-")) {
+            sheetMusic = new SheetMusic("error", 1);
         } else {
             int count;
             // 计算单位个数
-            if (data.contains(".."))
-                count = 1;
-            else if (data.contains("."))
-                if (data.length() - data.replace(".", "").length() == 2)
-                    count = 3;
-                else if (data.charAt(0) == '.')
-                    count = 2;
+            if (temp.contains(".."))
+                // 十六分音符
+                count = unit / 16;
+            else if (temp.contains("."))
+                if (temp.length() - temp.replace(".", "").length() == 2)
+                    // 八分音符附点
+                    count = 3 * unit / 16;
+                else if (temp.charAt(0) == '.')
+                    // 八分音符
+                    count = unit / 8;
                 else
-                    count = 5;
+                    // 四分音符附点
+                    count = 3 * unit / 8;
             else
-                count = 4 * (data.length() - data.replace("-", "").length() + 1);
+                count = unit / 4 * (temp.length() - temp.replace("-", "").length() + 1);
             // 将音符添加至乐谱中
-            SheetMusic sheetMusic = new SheetMusic(number(data.replace(".", "").replace("-", "")), count);
-            sheetMusics.add(sheetMusic);
+            sheetMusic = new SheetMusic(number(temp.replace(".", "").replace("-", "")), count, data.contains("/"));
         }
+        sheetMusics.add(sheetMusic);
     }
 
     // 生成对应音高
